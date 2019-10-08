@@ -1,0 +1,295 @@
+---
+title: "DESeq2_Intro"
+author: "J.Maldonado"
+date: "20-08-2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## INTRODUCCIÓN a DEseq2 en R/Rstudio
+[iBio] <http://www.ibio.cl/2019/08/06/workshop-ii-ibio-bioinformatica>  [iBio](http://www.ibio.cl/2019/08/06/workshop-ii-ibio-bioinformatica)
+
+### 1. Introducción
+
+#### Existen diversos paquetes en R para realizar análisis de expresión diferencial. El más clásico es [limma](https://bioconductor.org/packages/release/bioc/html/limma.html) el cual está diseñado para expresión de microarreglos usando modelos lineales y que en un principio fue utilizado también en RNAseq. Con el tiempo la experiencia demostró que los modelos lineales no se ajustan a los resultados de RNAseq por lo cual se desarrolló un amplio debate sobre cuál es el mejor modelo para este tipo de experimentos contratando con la realidad. Esto dió origen a distintos paquetes de R donde hoy en día los más comunes son [edgeR](https://bioconductor.org/packages/release/bioc/html/edgeR.html), [cummeRbund](https://bioconductor.org/packages/release/bioc/html/cummeRbund.html) y [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html).
+
+#### En el siguiente link encontrarán distintas explicaciones sobre las diferencias de los métodos https://www.biostars.org/p/284775/
+
+#### En este manual utilizaré el paquete DESeq2, el cual tiene un desarrollo más reciente y se está posicionando rápidamente como un estándar en el área.
+
+#### Toda la información detallada sobre este paquete la pueden encontrar en (http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
+
+### 2. Carga de datos en R
+
+#### Iniciamos el trabajo instalando los paquetes requeridos (en caso que no estén instalados)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))  
+  install.packages("BiocManager")  
+BiocManager::install("DESeq2")  
+
+#### Cargamos en memoria los paquetes requeridos (Se debe ejecutar cada vez que se inicia RStudio)
+
+```{r}
+library("DESeq2")
+```
+
+#### Seteamos el directorio de trabajo en el lugar donde tenemos el archivo de cuantificación
+
+```{r}
+setwd("~/iBio/workshop2019/Sesion5_RNAseq/cyverse/At")
+```
+
+#### DESeq2 requiere el conteo de reads "crudo", no RPKM, no FPKM ni ninguna variante.
+
+>The DESeq2 model internally corrects for library size, so transformed or normalized values such as counts scaled by library size should not be used as input.
+
+#### Utilizaremos el archivo que obtuvimos al final del procedimiento de mapeo con "salmon"... ya sea usando los archivos que poseen todos los reads o los archivos "disminuídos" a 1 millón de reads (1M).
+
+#### Leemos el archivo de cuantificación (At.1M.separated.quants.txt) y seteamos un nuevo nombre para las columnas
+
+```{r}
+counts<-data.frame(read.table("At.1M.separated.quants.txt",row.names = 1,header = T,sep = "\t"))
+colnames(counts)<-c("C1","C2","C3","T1","T2","T3")
+head(counts,2)
+```
+
+#### Creamos un vector para describir a qué condición corresponde cada muestra
+
+```{r}
+condition <- factor(rep(c("control", "treated"), each = 3))
+condition
+```
+
+#### En caso que nuestras muestras pertenezcan a un diseño multifactorial, podemos generar nuevos vectores que contengan dicha información.Por ejemplo, si algunas de las muestras pertenecen distintos genotipos y queremos realizar el análisis DEG ponderando por genotipos podemos agregar la info con el siguiente comando
+
+> En el siguiente link encontrarán más información al respecto
+(http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#multi-factor-designs)
+
+#### Ojo que es sólo un ejemplo pues las muestras de prueba pertenen al mismo genotipo
+
+
+
+```{r}
+genotype <- factor(c(rep("col0", each = 3),rep("col1", each = 3)))
+genotype
+```
+
+#### Consolidamos la información de nuestras muestras en la variable targets.
+
+```{r}
+targets <- data.frame(condition,genotype)
+targets
+```
+
+#### Leemos la tabla y aplicamos la función DESeq
+
+```{r}
+dds=DESeqDataSetFromMatrix(counts,targets,design=~condition)
+dds <- DESeq(dds)
+
+```
+
+#### Revisamos que los counts crudos ahora son parte del objeto dds
+
+```{r}
+head(counts(dds))
+```
+
+#### Además tenemos counts normalizados
+
+```{r}
+head(counts(dds,normalized=T))
+```
+
+
+
+#### Si por alguna razón desea grabar los valores de expresión crudos o los valores normalizados puede usar los siguientes
+```{r}
+
+write.csv(counts(dds), file = "quants.csv")
+write.csv(counts(dds,normalized=T), file = "quants_normalized.csv")
+```
+
+### 2.1 Visualización de datos
+
+### 2.1.1 Boxplot
+#### Podemos observar los perfiles de expresión de cada librería pre y post normalización
+
+```{r}
+par(mfrow=c(1,2))
+boxplot(log2(counts(dds, normalized=FALSE)+1), main="Raw counts", col=rep(c("lightblue","lightgreen"), each=3), ylim = c(0, 15),las=2)
+boxplot(log2(counts(dds, normalized=TRUE)+1), main="Normalized counts", col=rep(c("lightblue","lightgreen"), each=3), ylim = c(0, 15),las=2)
+```
+
+### 2.1.2 PCAplot
+> pendiente
+
+### 2.1.3 Heatmap
+> pendiente
+
+### 3. Comparaciones entre muestras
+
+#### DESeq automáticamente realizará las posibles comparaciones entre las librerías según el diseño que le pasamos como argumento. En este caso el diseño que le pedí fue "design=~condition", y como sólo existen dos condiciones (control y treated), sólo hará esa comparación. En caso que hubieran "condition" tuviera 3 condiciones (control, treated1 y treated2), va a realizar la comparación "treated1_vs_control" y "treated2_vs_control" además de un resultado "común" que denomina "Intercept".
+
+#### Para revisar las comparaciones posibles ocupamos el siguiente comando
+
+```{r}
+resultsNames(dds)
+```
+
+#### Como era de esperar, la única comparación disponible es "condition_treated_vs_control"
+
+#### Como la variable "dds" contiene diferentes comparaciones, es necesario extraer la comparación de interés para proceder con los siguientes análisis. Guardaré en la variable "res" el resultado de la comparación "treated_vs_control"
+
+```{r}
+res <- results(dds, name="condition_treated_vs_control")
+```
+
+
+#### Resumen de datos del objeto "res"
+
+```{r}
+summary(res)
+```
+
+#### Primeras líneas del objeto "res"
+```{r}
+head(res)
+```
+
+### 3.1 Visualización de datos: Volcano
+
+
+#### Una forma de visualizar los resultados de una comparación tipo "tratamiento_vs_control" para todos los genes es graficar el valor p ajustado (padj) vs el nivel de cambio (Fold of Change [FC]). Este tipo de gráfico es conocido como "Volcano" y permite visualizar los rangos entre los cuales se mueven dichas variables para estimar posibles puntos de corte. (https://en.wikipedia.org/wiki/Volcano_plot_(statistics))
+
+#### Vamos a realizar un gráfico "volcano" con los datos de "res"
+#### Primero seteamos algunos puntos de corte típicos para el gráfico
+#### Iré paso a paso para que puedan entender cómo se configura este gráfico y puedan realiza cambios si lo requieren
+
+#### Punto de corte máximo de padj (los genes que cumplan aparecerán como puntos rojos)
+```{r}
+alpha=0.05
+```
+#### Punto de mínimo corte para el fold of change (los genes que cumplan aparecerán como puntos rojos)
+```{r}
+FC=4
+```
+#### Punto de corte para el eje del padj (eje Y)
+```{r}
+padjlim=NULL
+```
+#### Punto de corte para el eje del FC (ele X)
+```{r}
+logFClim=7
+```
+
+#### Ajusto los valores padj="0" a un valor muy cercano a cero. Esto previene problemas de escala.
+```{r}
+res$padj[which(res$padj==0)] <- .Machine$double.xmin
+```
+
+#### Calcular el -log10 del padj para una mejor representación gráfica
+```{r}
+log10pval <- -log10(res$padj)
+```
+
+
+#### Seteo el límite del "eje y" en la representación 99% de los datos a menos que haya seteado otro valor la valiable "padjlim"
+```{r}
+if (is.null(padjlim)){
+  ylim <- c(0,1) * quantile(log10pval, probs=0.99, na.rm=TRUE)
+} else{
+  ylim <- c(0,1) * -log10(padjlim)
+}
+```
+
+#### Seteo el límite del "eje x" revisando si ha sido seteado en la variable logFClim
+```{r}
+if (is.null(logFClim)){
+  xlim <- NULL
+  #xlim <- c(-1,1) * quantile(res$log2FoldChange, probs=0.999, na.rm=TRUE)
+}else{
+  xlim <- c(-1,1)*logFClim
+}
+```
+
+#### Finalmente, creamos el gráfico
+```{r}
+plot(res$log2FoldChange, pmin(ylim[2], log10pval), ylim=ylim, xlim=xlim, las=1, cex=0.45,
+xlab=expression(log[2]~fold~change), ylab=expression(-log[10]~adjusted~P~value),
+col=ifelse(res$padj <= alpha & (res$log2FoldChange <= -log2(FC) | res$log2FoldChange >= log2(FC)), "red", "black"), pch=ifelse(log10pval >= ylim[2], 2, 20),
+main=paste0("Volcano plot - ",gsub(".*: ","",res@elementMetadata@listData[["description"]][2])))
+abline(h=-log10(alpha), col="black", lty=4, lwd=2.0)
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-log2(FC), col="black", lty=4, lwd=2.0)
+abline(v=log2(FC), col="black", lty=4, lwd=2.0)
+```
+
+#### Los puntos rojos representan genes que "cumplen" con las condiciones de corte escogidas.
+#### Las líneas representan los cuadrantes "límite" según las condiciones escogidas.
+#### Los triángulos representan genes que poseen un pvalue por sobre el punto de corte escogido.
+
+### 3.2 Selección de genes según puntos de corte
+
+#### Vamos a revisar el número de genes que cumplen con distintos puntos de corte
+
+### 3.2.1 Punto de corte sólo de pvalue < 0.05
+
+#### * genes con pvalue <0.05
+```{r}
+sum(res$padj<0.05, na.rm = T)
+```
+
+#### * genes con pvalue < 0.05 y nivel de cambio mayor que 0 ( log2(X) > 0 )
+```{r}
+sum(res$padj<0.05 & res$log2FoldChange>0, na.rm = T)
+```
+
+#### * genes con pvalue < 0.05 y nivel de cambio menor que 0 ( log2(X) < 0 )
+```{r}
+sum(res$padj<0.05 & res$log2FoldChange<0, na.rm = T)
+```
+
+### 3.2.2 Punto de corte de pvalue < 0.05 y FC > 2
+
+#### * genes con pvalue < 0.05 y nivel de cambio absoluto mayor que ( |log2(X)| > 1 )
+```{r}
+sum(res$padj<0.05 & abs(res$log2FoldChange)>=0, na.rm = T)
+```
+
+#### * genes con pvalue < 0.05 y nivel de cambio mayor que 2 ( log2(X) > 1 )
+```{r}
+sum(res$padj<0.05 & res$log2FoldChange>=1, na.rm = T)
+```
+
+#### * genes con pvalue < 0.05 y nivel de cambio meno que 2 ( log2(X) < -1 )
+```{r}
+sum(res$padj<0.05 & res$log2FoldChange<=-1, na.rm = T)
+```
+
+### 3.2.3 Selección de IDs
+
+#### En cualquiera de los ejemplos anteriores, para obtener el listado de genes modificamos el comando utilizado de la siguiente manera
+
+#### * Ejemplo para genes up
+```{r}
+up_reg <- row.names(subset(res, res$padj < 0.05 & res$log2FoldChange >= 1))
+head(up_reg)
+
+```
+#### * Ejemplo para genes down
+```{r}
+down_reg <- row.names(subset(res, res$padj < 0.05 & res$log2FoldChange <=- 1))
+head(down_reg)
+```
+
+#### Y con el siguiente comando podemos guardar el listado de IDs para usarlo, por ejemplo, en Cytoscape
+```{r warning=FALSE}
+write.table( up_reg, file = "up_reg.txt", col.names = FALSE, row.names = FALSE, quote = FALSE)
+write.table( down_reg, file = "down_reg.txt", col.names = FALSE, row.names = FALSE, quote = FALSE)
+```
+
+FIN... por ahora
