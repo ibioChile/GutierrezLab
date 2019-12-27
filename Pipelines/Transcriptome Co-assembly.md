@@ -1,6 +1,6 @@
 ## Pipeline overview
 
-<img src="https://user-images.githubusercontent.com/7208981/57542790-23f7f800-7342-11e9-9a01-88da4aeda87c.png" width="400">
+![Transcriptome Co-Assembly Pipeline](https://user-images.githubusercontent.com/53570955/71528170-619f9600-28bd-11ea-802b-5597542c3e9e.png)
 
 ## QC/QA
 
