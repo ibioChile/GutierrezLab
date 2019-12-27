@@ -1,15 +1,3 @@
-# PSBL Atamaca Plants Transcriptomics: pipeline summary
-
-Atacama Desert is a unique landscape that host a surprising number of plants species. In this project, we aimed to find molecular mechanisms underlying plants resilience to Atacama's extreme abiotic conditions. To do so, we performed bulk RNA-seq from 32 Atacama plant species, spanning several plant families spread across an altitudinal transect in the Andes mountain range. 
-
-## Data description
-
-We performed Illumina paired-end sequencing for 32 plant species selected to maximize number of plant families included in the analysis, presence in the transect and relatedness to crop species. RNA was extracted from pooled plants including at least three different individuals collected from different locations. Several rounds of sequencing were performed to achieve at least 40 M reads per plant species. Notably, six of these species were sequenced during the pilot phase of this project and have around 200 M reads.
-
-We also included 32 California "sister" species in this analysis, as well as 6 model species or crops. 
-
-> Species distribution in the Atacama transect and C3/C4/CAM information were obtained by Dr. Diaz. Transcriptomes were sequenced by Dr. Contreras-Lopez. 
-
 ## Pipeline overview
 
 <img src="https://user-images.githubusercontent.com/7208981/57542790-23f7f800-7342-11e9-9a01-88da4aeda87c.png" width="400">
@@ -38,7 +26,7 @@ multiqc trimmed/
 
 ## De novo transcriptome assembly
 
-Two different tools were evaluated for de novo transcriptome assembly: Bridger and Trinity. Performance was assessed by Carol Moraga according to contig length distribution, reads backmapping, completeness and full-lenght proteins. As Bridger achieved higher performance over the current Trinity version, it was selected to assembly the whole dataset. Commands used to run both assembler are listed below.
+Three different tools will be used for de novo transcriptome assembly: Bridger, Trinity and RNASpades. 
 
 Running Bridger:
 ```bash
@@ -51,11 +39,17 @@ perlbrew switch perl5.24.0_with
 ```
 
 Running Trinity:
-```bash
-cd /projects2/software/opt/trinityrnaseq-Trinity-v2.3.2
-perlbrew switch perl5.24.0_with
-perl Trinity --seqType fq --max_memory 200G --left R1.trimmed.fastq --right R2.trimmed.fastq --CPU 20 --min_kmer_cov 5 --full_cleanup --SS_lib_type RF
 ```
+cat R1.trim.fastq.gz R1.unpaired.fastq.gz > R1_all.trim.fq
+cat R2.trim.fastq.gz R2.unpaired.fastq.gz > R2_all.trim.fq
+source conda trinity
+mkdir trinity_out/
+Trinity --seqType fq  --left R1_all.trim.fq --right R2_all.trim.fq --CPU 20 --no_normalize_reads --output trinity_out/ --max_memory 200G
+```
+
+Running RNASpades
+
+
 
 > Notice that these commands consider a paired-end (PE) library.
 
