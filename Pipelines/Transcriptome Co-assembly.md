@@ -42,14 +42,16 @@ Running Trinity:
 ```
 cat R1.trim.fastq.gz R1.unpaired.fastq.gz > R1_all.trim.fq
 cat R2.trim.fastq.gz R2.unpaired.fastq.gz > R2_all.trim.fq
-source conda trinity
 mkdir trinity_out/
 Trinity --seqType fq  --left R1_all.trim.fq --right R2_all.trim.fq --CPU 20 --no_normalize_reads --output trinity_out/ --max_memory 200G
 ```
 
 Running RNASpades
 
-
+```
+mmkdir out_spades/
+rnaspades.py --ss-rf --pe1-1 R1.trim.fastq.gz --pe1-2 R2.trim.fastq.gz --pe1-s R1.unpaired.fastq.gz --pe2-s R2.unpaired.fastq.gz -o out_spades/ -t 32 -m 500
+```
 
 > Notice that these commands consider a paired-end (PE) library.
 
