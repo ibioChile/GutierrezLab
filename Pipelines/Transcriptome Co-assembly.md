@@ -81,6 +81,24 @@ Reads used for the assembly can be mapped back to the assembly. The number of re
 transrate --assembly asm.bridger.fasta --left R1.trimmed.fastq --right R2.trimmed.fastq
 ```
 
+## Assemblies merging
+
+The script used to combined multiple assemblies is part of this [publication](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-016-1406-x#MOESM3) and can be found [here]( https://static-content.springer.com/esm/art%3A10.1186%2Fs12859-016-1406-x/MediaObjects/12859_2016_1406_MOESM3_ESM.pl). We named this script ```Suplementary_file.pl```.
+
+```
+conda install -c bioconda cd-hit 
+conda install -c bioconda transdecoder=3.0.0 
+
+mkdir raw_assemblies/
+cp ../salida.inicial/transcripts.fasta ../BridgerOut_paired/Bridger.fasta ../trinity_out/Trinity.fasta raw_assemblies/
+
+mv Bridger.fasta alerce_assembly_bridger.fasta
+mv Trinity.fasta alerce_assembly_trinity.fasta
+mv transcripts.fasta alerce_assembly_spades.fasta
+
+perl Suplementary_file.pl -i raw_assemblies/ -w Concatenated_assembly -Cd /home/pcamejo/anaconda2/envs/trinity/bin/ -Tr /home/pcamejo/anaconda2/envs/trinity/bin/
+```
+
 ## Protein prediction and clustering
 
 From assembled transcripts, protein sequence was predicted using Transdecoder. This software finds all 6 possible open reading frames within the transcript and translates the coding sequence into aminoacids. 
@@ -183,9 +201,3 @@ Steps for this analysis:
 - Compare ranking of relative abundance in different species
 - Explore annotations for transcripts with high relative abundance
 
-## Comments
-
-- Trinity is the most popular tool for de novo transcriptome assembly nowadays, and during the last year has experienced important upgrades. I think it is worth to try to re-assemble reads with Trinity's last version and compare the metrics. New insights can emerge from better and reliable assemblies. The field of bioinformatics evolves quickly.
-- For a project like this, I hihgly recommend using automated workflow managers like Snakemake. A friend of mine developed Elvers workflow (https://github.com/dib-lab/elvers), which was designed to work with bulk RNA-seq, and includes quality trimming, de novo assembly, and annotation. You can also write your own workflows using Snakemake (which is Python code).
-- For transcript abundance estimation, I advise using a software like Salmon (or Kallisto). These software include a probabilistic model that calculates the effective length of the read based on nucleotide composition and library prep biases. Manual calculation is simply not as accurate. 
-- To compare between ranking of expression across different species you can use Spearman's rank correlation. Pearson is not recommended since there is no reason to expect a linear correlation between the transcript abundance between two different species, samples and different batches.
