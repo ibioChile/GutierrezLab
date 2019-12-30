@@ -94,3 +94,44 @@ perl Suplementary_file.pl -i raw_assemblies/ -w Concatenated_assembly -Cd /home/
 ```
 ## Annotation
 
+We used two different tools for trascriptome annotation:
+
+- [Trinotate](https://github.com/Trinotate/Trinotate.github.io/wiki):
+
+```
+blastx -query transcripts.fasta -db /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/uniprot_sprot.pep -num_threads 32 -max_target_seqs 1 -outfmt 6 -evalue 1e-3 > blastx.outfmt6
+
+blastp -query transcripts.pep -db /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/uniprot_sprot.pep -num_threads 32 -max_target_seqs 1 -outfmt 6 -evalue 1e-3 > blastp.outfmt6
+
+hmmscan --cpu 12 --domtblout /projects2/pcamejo/alerce/trinotate/TrinotatePFAM.out /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Pfam-A.hmm transcripts.pep > pfam.log
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/util/rnammer_support/RnammerTranscriptome.pl --transcriptome transcripts.fasta  --path_to_rnammer /projects2/pcamejo/bin/RNAMMER/rnammer
+
+/projects2/pcamejo/bin/signalp-4.1/signalp -f short -n signalp.out transcripts.fasta
+
+/projects2/pcamejo/bin/tmhmm-2.0c/bin/tmhmm --short < transcripts.pep > tmhmm.out
+
+grep ">" transcripts.fasta | cut -d ">" -f2 > transcript_headers
+
+while read line; do gene=$(echo $line | cut -d "_" -f1,2,3,4); printf "$gene\t$line\n"; done < transcript_headers > transcripts.fasta.gene_trans_map
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate  /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite init --gene_trans_map transcripts.fasta.gene_trans_map --transcript_fasta transcripts.fasta --transdecoder_pep transcripts.pep
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite LOAD_swissprot_blastp blastp.outfmt6
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite LOAD_swissprot_blastx blastx.outfmt6
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite LOAD_pfam TrinotatePFAM.out
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite LOAD_tmhmm tmhmm.out
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite LOAD_signalp signalp.out
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite LOAD_rnammer transcripts.fasta.rnammer.gff
+
+/projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate /projects2/pcamejo/bin/Trinotate-Trinotate-v3.2.0/Trinotate.sqlite report  > trinotate_annotation_report.xls
+```
+
+- [Mercator4](https://plabipd.de/portal/mercator4) 
+
+This is an online platform. We uploaded ```transcripts.pep``` file to the website and results were sent to the email specified.
