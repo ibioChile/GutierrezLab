@@ -77,7 +77,7 @@ python3 /projects2/software/opt/BUSCO-3.0/scripts/run_BUSCO.py -i FILENAME.fasta
 
 ## Co-assembly
 
-The script used to combined multiple assemblies is part of this [publication](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-016-1406-x#MOESM3) and can be found [here]( https://static-content.springer.com/esm/art%3A10.1186%2Fs12859-016-1406-x/MediaObjects/12859_2016_1406_MOESM3_ESM.pl). We named this script ```Suplementary_file.pl```.
+The script used to combined multiple assemblies is part of this [publication](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-016-1406-x#MOESM3) and can be found [here]( https://static-content.springer.com/esm/art%3A10.1186%2Fs12859-016-1406-x/MediaObjects/12859_2016_1406_MOESM3_ESM.pl). We name this script ```Suplementary_file.pl```.
 
 ```
 conda install -c bioconda cd-hit 
