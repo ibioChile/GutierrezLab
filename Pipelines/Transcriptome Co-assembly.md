@@ -74,14 +74,8 @@ python3 /usr/local/BUSCO_v1.1b1/plant_early_release/BUSCO_plants.py -i asm.bridg
 # Running BUSCO using complete database
 python3 /projects2/software/opt/BUSCO-3.0/scripts/run_BUSCO.py -i FILENAME.fasta -o DIRECTORY -l /projects2/software/opt/BUSCO-3.0/datasets/embryophyta_odb9/ -m tran -c 20 -f
 ```
-> CEGMA is not mantained anymore by the Korf Lab.
 
-Reads used for the assembly can be mapped back to the assembly. The number of reads that can be correctly mapped to a transcript indicates the amount of information incorporated in the final de novo assembly. These statistics can be obtained with transrate:
-```bash
-transrate --assembly asm.bridger.fasta --left R1.trimmed.fastq --right R2.trimmed.fastq
-```
-
-## Assemblies merging
+## Co-assembly
 
 The script used to combined multiple assemblies is part of this [publication](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-016-1406-x#MOESM3) and can be found [here]( https://static-content.springer.com/esm/art%3A10.1186%2Fs12859-016-1406-x/MediaObjects/12859_2016_1406_MOESM3_ESM.pl). We named this script ```Suplementary_file.pl```.
 
@@ -98,106 +92,5 @@ mv transcripts.fasta alerce_assembly_spades.fasta
 
 perl Suplementary_file.pl -i raw_assemblies/ -w Concatenated_assembly -Cd /home/pcamejo/anaconda2/envs/trinity/bin/ -Tr /home/pcamejo/anaconda2/envs/trinity/bin/
 ```
-
-## Protein prediction and clustering
-
-From assembled transcripts, protein sequence was predicted using Transdecoder. This software finds all 6 possible open reading frames within the transcript and translates the coding sequence into aminoacids. 
-
-Proteins were obtained with the following command:
-```bash
-perl /projects2/software/opt/trinityrnaseq_r20131110/trinity-plugins/transdecoder/TransDecoder -t asm.bridger.fasta --workdir transdecoder --cd_hit_est /usr/local/bin/cd-hit-est
-```
-
-Then, CD-HIT was used to group together similar proteins and remove from the dataset small proteins contained within a larger protein version. CD-HIT was run as follows:
-```bash
-cd-hit -i asm.bridger.fasta.transdecoder.pep -o asm.bridger.fasta.transdecoder.cdhit90.pep -T 0 -M 0 -c 0.9
-```
-
-## Removing known non-plant species
-
-Proteins matching non-plants species were removed from the proteomes, leaving plants proteins as well as unclassified/unknown proteins in the final dataset. 
-
-- Proteomes were compared to Uniprot SwissProt using BLASTP
-- Alignments with e-value < 1e-10 and identity > 50% were selected
-- Taxa corresponding to the subject was added
-- Protein IDs matching a "Viridiplantae" sequences were saved in a separate file
-- Protein IDs matching something different than "Viridiplantae" were saved in a separate file
-- All protein IDs were saved in a separate file
-- Protein IDs not matching any species were obtained by substracting total protein IDs and protein IDs matching and organism different than "Viridiplantae"
-
-These steps can be achieved as follows:
-```bash
-blastall -p blastp -a 30 -m 8 -i asm.bridger.fasta.transdecoder.cdhit90.pep -o asm.bridger.fasta.transdecoder.cdhit90.pep.uniprot -d /projects2/databases/UniprotKB/uniprot_sprot.fasta
-awk -F"\t" '{if($11 < 1e-10) print $0}' asm.bridger.fasta.transdecoder.cdhit90.pep.uniprot | awk -F"\t" '{if($3 > 50.00) print $0}' | sort -k1,1 -u | cut -f1,2 > tempfile1
-join -1 2 -2 1 -a 1 <(sort -k2,2 tempfile1) <(sort -k1,1 /projects1/dcsoto/databases/swissprot_taxa.tab) | awk '{print $2"\t"$1"\t"$3"\t"$5}' > tempfile2
-grep -w "Viridiplantae" tempfile2 | cut -f1 > tempfile3 # plant sequences
-grep -w -v "Viridiplantae" tempfile2 | cut -f1 > tempfile4 # no plant sequences
-grep ">" asm.bridger.fasta.transdecoder.cdhit90.pep | cut -d" " -f1 > tempfile5
-grep -F -v -f tempfile4 tempfile5 > tempfile6
-perl /projects1/dcsoto/code/extract-seq-id.pl tempfile6 asm.bridger.fasta.transdecoder.cdhit90.pep > asm.bridger.fasta.transdecoder.cdhit90.filtered.pep
-```
-> Note: Sequence ID names may differ and renaming steps might be needed. 
-
-Proteome size was calculated before and after this steps, and total amount of proteins from non-plants species was reported. 
-
-## Big Plant Pipeline dataset
-
-The final set of predicted proteins (plant+unclassified) was sent to our collaborators for the Big Plant pipeline. This dataset included 32 Atacama plants and 32 "sister" species from the California Desert, selected according to their phylogenetic distance from Atacama species as well as their availability. These dataset comes from 3 different sources SRA, Dryad and 1KP. Some of these species underwent the same pipeline as Atacama species, while others were retrieved as assemblies. We also included 6 model organisms and crops. Proteomes for these species were downloaded from their respective websites or JGI.
-
 ## Annotation
-
-Transcripts were annotated using InterProScan (functional annotation based on protein domains prediction), and E2P2 (pathway annotation), and Gene Ontology (GO). 
-
-InterPro domains were found as follow:
-```bash
-/projects2/software/opt/interproscan-5.18-57.0/interproscan.sh -t n -i asm.bridger.cdhit90.fasta -iprlookup -goterms -pa -f tsv
-/projects2/software/opt/interproscan-5.18-57.0/interproscan.sh -i asm.bridger.cdhit90.fasta.transdecoder.pep -iprlookup -goterms -pa -f tsv
-```
-
-Pathway annotation was performed as follow:
-```bash
-cd /projects2/software/opt/e2p2-3.0/
-./runE2P2.v3.0.py -i asm.bridger.cdhit90.fasta.transdecoder.pep -o asm.bridger.cdhit90.fasta.transdecoder.pep.e2p2v3
-```
-
-GO terms were transferred to transcripts using 3 sources of information: _A. thaliana_ hits, Uniprot SwissProt hits and InterProScan. 
-
-1) _A. thaliana_ GO terms:
-```bash
-blastall -p blastp -a 20 -m 8 -i asm.bridger.fasta.transdecoder.pep.cdhit -o asm.bridger.fasta.transdecoder.pep.cdhit.athal -d /projects1/dcsoto/databases/TAIR10_pep_20110103_representative_gene_model_updated
-paste <(awk  -F"[|]m." '{print $1}' asm.bridger.fasta.transdecoder.pep.cdhit.athal) <(cut -f2- asm.bridger.fasta.transdecoder.pep.cdhit.athal) | sed 's/cds.//g' > tempfile1
-awk '{if($3>50 && $11<1e-10){print $0}}' tempfile1| sort -k11,11g | sort -u -k1,1 > tempfile2
-join -t $'\t' -1 2 -2 1 <(cut -d"." -f1 tempfile2 |sort -k2,2) <(sort -k1,1 /projects1/dcsoto/databases/ATH_GO.tab2) | cut -f2- > asm.bridger.fasta.annot.go.arath
-```
-
-2) Uniprot GO terms:
-```bash
-awk '{if($3>50 && $11<1e-10){print $0}}' asm.bridger.fasta.transdecoder.pep.cdhit.uniprot |cut -f1,14 |sed 's/cds.//g' |sed 's/; /\t/g' |grep "GO:" > tempfile
-paste <(cut -d"|" -f1 tempfile) <(cut -f2- tempfile) > asm.bridger.fasta.annot.go.uniprot
-```
-
-3) InterPro GO terms
-```bash
-cut -f1,14 asm.bridger.cdhit90.fasta.transdecoder.pep.tsv | awk '{if($2!=""){print $0}}' > tempfile1 # InterProScan output
-paste <(awk  -F"[|]m." '{print $1}' tempfile1) <(cut -f2 tempfile1 |sed 's/|/\t/g') |sed 's/cds.//g' |sort -u > tempfile2
-python /projects1/dcsoto/code/columnizador.py -i tempfile2 -o tempfile3
-sort -u tempfile3 > tempfile4
-python /projects1/dcsoto/code/filalizador.py -i tempfile4 -o asm.bridger.fasta.annot.go.interproscan
-```
-
-All three GO annotation approaches were merged and formatted for GoStats:
-```bash
-sort asm.bridger.fasta.annot.go.arath asm.bridger.fasta.annot.go.interproscan asm.bridger.fasta.annot.go.swissprot > tempfile1
-python /projects1/dcsoto/code/columnizador.py -i tempfile1 -o tempfile2
-sort -u tempfile2 | awk '{print $2"\tISS\t"$1}' > asm.bridger.fasta.annot.go.all.gostats
-```
-
-## Transcript abundance analysis
-
-This analysis was performed using manually calculated transcripts per million (TPM). However, I strongly recommend using a software like Salmon for transcripts quantification. This software uses a probabilistic model to obtain adjusted TPMs that consider the complexities of multiple isoforms and multimapping reads, as well as RNA-seq biases.
-
-Steps for this analysis:
-- Calculate TPMs using a RNA-seq quantification software
-- Compare ranking of relative abundance in different species
-- Explore annotations for transcripts with high relative abundance
 
