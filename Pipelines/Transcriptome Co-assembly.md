@@ -30,12 +30,12 @@ Three different tools will be used for de novo transcriptome assembly: Bridger, 
 
 Running Bridger:
 ```bash
-export LD_LIBRARY_PATH=/usr/local/boost1.57/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/projects2/dcsoto/bin/boost/lib/:$LD_LIBRARY_PATH:$LD_LIBRARY_PATH
 export CPPFLAGS="-I/usr/local/boost1.57/"
 export LIBS="-L/usr/local/boost1.57/lib"
 
 perlbrew switch perl5.24.0_with
-/projects2/software/opt/Bridger_r2014-12-01/Bridger.pl --seqType fq --left R1.trim.fastq.gz --right R2.trim.fastq.gz --CPU 20 -o BridgerOut --min_kmer_coverage 5 --SS_lib_type RF
+/projects2/dcsoto/bin/Bridger_r2014-12-01/Bridger.pl --seqType fq --left R1.trim.fastq.gz --right R2.trim.fastq.gz --CPU 20 -o BridgerOut --min_kmer_coverage 5 --SS_lib_type RF
 ```
 
 Running Trinity:
