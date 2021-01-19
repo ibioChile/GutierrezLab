@@ -158,7 +158,7 @@ for file in bam_dedup/*.RG.bam; do samtools index $file; done
 4.2 Use the ASEReadCounter walker in GATK to retrieve Llagostera and Landsberg erecta allele counts at discriminant SNPs 
 
 ```
-gatk3 -T ASEReadCounter -I bam.list -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta  -sites  ../freebayes/fb.LeLe.LlLl.filt.final.vcf -o ASEReadCounter.out -minDepth 30 -mmq 40 -mbq 20 -U ALLOW_N_CIGAR_READS
+for file in bam_dedup/*.RG.bam; do gatk3 -T ASEReadCounter -I $file -R Trinity.cdhit99.fasta -sites fb.LeLe.LlLl.filt.final.vcf -o $file.out -minDepth 30 -mmq 40 -mbq 20 -U ALLOW_N_CIGAR_READS; done
 ```
  
  
