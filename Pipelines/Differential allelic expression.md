@@ -4,7 +4,7 @@
  
  1. Assembly of the transcriptome of Landsberg.
  2. Calling of discriminant SNPs between Landsberg erecta and Llagostera.
- 3. Differential expression among parental genotypes.
+ 3. RNA-seq mapping and differential expression among parental genotypes.
  4. Estimate allele-specific expression among hybrids.
  
  
@@ -119,9 +119,46 @@ grep -v "#" fb.LeLe.LlLl.filt.homvar-2.vcf > temp.vcf
 while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $11}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final.vcf ;fi;  done < temp.vcf
 ```
 
-## 3. Differential expression among parental genotypes.
+## 3. RNA-seq mapping and differential expression among parental genotypes.
+
+3.1 In order to avoid mapping biases to the reference when estimating allele-specific expression, built a custom pseudotranscriptome using the FastaAlternateReferenceMaker walker in GATK.
+
+```
+gatk IndexFeatureFile -I fb.LeLe.LlLl.filt.final.vcf
+
+gatk FastaAlternateReferenceMaker -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta -V fb.LeLe.LlLl.filt.final.vcf --snp-mask fb.LeLe.LlLl.filt.final.vcf --snp-mask-priority -O fb.LeLe.LlLl.filt.final.mask.fasta
+
+#Since FastaAlternateReferenceMaker adds a number before each sequence:
+cat fb.LeLe.LlLl.filt.final.mask.fasta | sed 's/>.*TRI/>TRI/'| sed 's/:.*//' > fb.LeLe.LlLl.filt.final.mask.fixed.fasta
+```
+
+3.2  Map reads from each library against the pseudotranscriptome using bowtie2.
+
+```
+```
+
+3.3. Mark duplicates with samtools.
+
+3.4 Quantify expression levels.
+
+3.5 Annotate transcripts using blast.
 
 
 
+## 4. Estimate allele-specific expression among hybrids.
+
+4.1 Assign groups to bam files and index.
+
+```
+for file in *.dedup.bam; do base=${file##*/}; picard AddOrReplaceReadGroups I=$file O=bam_dedup/${base%.*}.RG.bam RGSM=LeLl RGPL=illumina RGLB=LeLl RGPU=LeLl RGID=1 VALIDATION_STRINGENCY=LENIENT; done
+
+for file in bam_dedup/*.RG.bam; do samtools index $file; done
+```
+
+4.2 Use the ASEReadCounter walker in GATK to retrieve Llagostera and Landsberg erecta allele counts at discriminant SNPs 
+
+```
+gatk3 -T ASEReadCounter -I bam.list -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta  -sites  ../freebayes/fb.LeLe.LlLl.filt.final.vcf -o ASEReadCounter.out -minDepth 30 -mmq 40 -mbq 20 -U ALLOW_N_CIGAR_READS
+```
  
  
