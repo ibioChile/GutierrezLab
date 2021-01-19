@@ -135,6 +135,15 @@ cat fb.LeLe.LlLl.filt.final.mask.fasta | sed 's/>.*TRI/>TRI/'| sed 's/:.*//' > f
 3.2  Map reads from each library against the pseudotranscriptome using bowtie2.
 
 ```
+# build the bowtie2 index:
+bowtie2-build fb.LeLe.LlLl.filt.final.mask.fixed.fasta fb.LeLe.LlLl.filt.final.mask.fixed.bowtie2index
+
+# The alignment script:
+nohup bowtie2 -x fb.LeLe.LlLl.filt.final.mask.fixed.bowtie2index -1 $1_1.fq.gz.trim.fil.pair.gz -2 $1_2.fq.gz.trim.fil.pair.gz  -p 20 -S $1.sam >$1.log
+
+# The alignment run is with a file with the base id for each read.
+
+cat list|xargs -n1 -P2 sh align.bowtie2.sh 
 ```
 
 3.3. Mark duplicates with samtools.
