@@ -138,7 +138,8 @@ cat fb.LeLe.LlLl.filt.final.mask.fasta | sed 's/>.*TRI/>TRI/'| sed 's/:.*//' > f
 # build the bowtie2 index:
 bowtie2-build fb.LeLe.LlLl.filt.final.mask.fixed.fasta fb.LeLe.LlLl.filt.final.mask.fixed.bowtie2index
 
-# The alignment script:
+# The alignment script saves as align.bowtie2.sh:
+
 nohup bowtie2 -x fb.LeLe.LlLl.filt.final.mask.fixed.bowtie2index -1 $1_1.fq.gz.trim.fil.pair.gz -2 $1_2.fq.gz.trim.fil.pair.gz  -p 20 -S $1.sam >$1.log
 
 # The alignment run is with a file with the base id for each read.
@@ -147,12 +148,61 @@ cat list|xargs -n1 -P2 sh align.bowtie2.sh
 ```
 
 3.3. Mark duplicates with samtools.
+```
+# Create the file do.fixmate.dedup.sh with the following instructions:
+
+samtools view -S -b  $1.sam > $1.bam;
+samtools sort -n -o $1.sorted.bam $1.bam;
+samtools fixmate -m $1.sorted.bam $1.fixmate.bam;
+samtools sort $1.fixmate.bam -o $1.fixmate.sorted.bam;
+samtools markdup -r $1.fixmate.sorted.bam $1.fixmate.sorted.dedup.bam;
+samtools sort -o $1.sorted.bam $1.fixmate.sorted.dedup.bam;
+samtools index $1.fixmate.sorted.dedup.bam;
+
+# Run the script for each .sam file:
+ls *.sam |sed 's/.sam//g' | xargs -n1 -P10 sh do.fixmate.dedup.sh 
+
+```
 
 3.4 Quantify expression levels.
 
+```
+Prepare a pseudo Rsubread annotation file with the transcript (as chromosomes).
+
+cat  fb.LeLe.LlLl.filt.final.mask.fixed.rsem.transcripts.fa |perl -ane 'chomp($_); print "$_\t"; ' | sed 's/>/\n>/g' |perl -ane '@l=split(/\t/); chomp(@l); $a=length($l[1]); print  "$l[0]\t$l[0]\t1\t$a\t+\n";' |sed 's/>//g' |grep TR>fb.LeLe.LlLl.filt.final.mask.fixed.rsem.transcripts.rsubread
+
+# in R:
+
+library(Rsubread)
+ann<-read.table("fb.LeLe.LlLl.filt.final.mask.fixed.rsem.transcripts.rsubread",sep="\t")
+colnames(ann)<-c("GeneID","Chr","Start","End", "Strand")
+lista.bam<-dir(pattern=".bam$")
+c0<-featureCounts(lista.bam,annot.ext=ann,allowMultiOverlap=T,isPairedEnd=T,nthreads=20,strandSpecific=0)
+write.table(c0$counts,"conteos.por.transcrito.txt",sep="\t",col.names=NA,quote=F)
+```
+
 3.5 Annotate transcripts using blast.
 
+```
+# Download and decompress the cDNA file from arabidosis.:
+wget https://www.arabidopsis.org/download_files/Sequences/Araport11_blastsets/Araport11_genes.201606.cdna.new.fasta.gz
+gzip -d Araport11_genes.201606.cdna.new.fasta.gz
 
+# Make a blast database for nucleotide blast:
+
+makeblastdb -in Araport11_genes.201606.cdna.new.fasta  -input_type fasta -dbtype nucl -title Araport11_genes.201606.cdna.new.blast
+
+# Run the blast:
+
+blastall -p blastn -i ../fb.LeLe.LlLl.filt.final.mask.fixed.rsem.transcripts.fa -d Araport11_genes.201606.cdna.new.fasta -m 8 -a 20 -o salida.m8
+
+# sort the file and select the best match:
+
+cat salida.m8 | sort -k1,1  -k12nr,12  >salida.m8.sort
+
+cat salida.m8.sort |perl seleccionaprimeros.pl | perl -ane '@l=split(/\t/); chomp(@l);@g=split(/\./,$l[1]); print join "\t",@l,$g[0]; print "\n";'  >topscore.blast.txt
+
+```
 
 ## 4. Estimate allele-specific expression among hybrids.
 
