@@ -96,6 +96,31 @@ picard AddOrReplaceReadGroups I=LlLl.all.trim.fixmate.sorted.dedup.bam O=LlLl.al
 freebayes-parallel targets.bed 44  -f Trinity.cdhit99.fasta --haplotype-length 0 --standard-filters --min-alternate-fraction 0.05 -p 2 --pooled-discrete --pooled-continuous LeLe.all.trim.fixmate.sorted.dedup.RG.bam LlLl.all.trim.fixmate.sorted.dedup.RG.bam > fb.LeLe.LlLl.vcf
 ```
 
+2.4 Use bcftools to filter the resulting VCF file.
+
+```
+bcftools view -i 'DP > 10 & SAF > 2 & SAR > 2 & RPR > 1 & RPL > 1'  fb.LeLe.LlLl.vcf  > fb.LeLe.LlLl.filt.vcf
+```
+
+2.5 Use the SelectVariants walker in GATK to keep only monomorphic variants for an alternative allele in Llagostera and for the reference allele in Landsberg erecta.
+
+```
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.vcf -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta  -select 'vc.getGenotype("LeLe.all").isHomRef()' -o fb.LeLe.LlLl.filt.homref-1.vcf
+
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.homref-1.vcf -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta  -select 'vc.getGenotype("LlLl.all").isHomVar()' -o fb.LeLe.LlLl.filt.homvar-2.vcf
+```
+
+2.6  To keep only high-confidence sites, filter out sites with AO < 20 and AO / DP < 0.99.
+
+```
+grep "#" fb.LeLe.LlLl.filt.homvar-2.vcf > fb.LeLe.LlLl.filt.final.vcf
+grep -v "#" fb.LeLe.LlLl.filt.homvar-2.vcf > temp.vcf
+
+while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $11}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final.vcf ;fi;  done < temp.vcf
+```
+
+## 3. Differential expression among parental genotypes.
+
 
 
  
