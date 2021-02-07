@@ -93,9 +93,9 @@ picard AddOrReplaceReadGroups I=LeLe.all.trim.fixmate.sorted.dedup.bam O=LeLe.al
 
 picard AddOrReplaceReadGroups I=LlLl.all.trim.fixmate.sorted.dedup.bam O=LlLl.all.trim.fixmate.sorted.dedup.RG.bam RGSM=LlLl.all RGPL=illumina RGLB=LlLl RGPU=LlLl RGID=2
 
-samtools sort LeLe.all.trim.fixmate.sorted.dedup.RG.bam
+samtools index LeLe.all.trim.fixmate.sorted.dedup.RG.bam
 
-samtools sort LlLl.all.trim.fixmate.sorted.dedup.RG.bam
+samtools index LlLl.all.trim.fixmate.sorted.dedup.RG.bam
 
 freebayes-parallel targets.bed 44  -f Trinity.cdhit99.fasta --haplotype-length 0 --standard-filters --min-alternate-fraction 0.05 -p 2 --pooled-discrete --pooled-continuous LeLe.all.trim.fixmate.sorted.dedup.RG.bam LlLl.all.trim.fixmate.sorted.dedup.RG.bam > fb.LeLe.LlLl.vcf
 ```
