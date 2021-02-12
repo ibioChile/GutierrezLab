@@ -129,14 +129,20 @@ grep -v "#" fb.LeLe.LlLl.filt.homvar-2.vcf > temp.vcf
 while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $11}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final.vcf ;fi;  done < temp.vcf
 ```
 
+2.8 Remove non-biallelic variants.
+
+```
+vcftools --fb.LeLe.LlLl.filt.final.vcf --min-alleles 2 --max-alleles 2 --recode --out fb.LeLe.LlLl.filt.final.nonbi.vcf
+```
+
 ## 3. RNA-seq mapping and differential expression among parental genotypes.
 
 3.1 In order to avoid mapping biases to the reference when estimating allele-specific expression, built a custom pseudotranscriptome using the FastaAlternateReferenceMaker walker in GATK.
 
 ```
-gatk IndexFeatureFile -I fb.LeLe.LlLl.filt.final.vcf
+gatk IndexFeatureFile -I fb.LeLe.LlLl.filt.final.nonbi.vcf
 
-gatk FastaAlternateReferenceMaker -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta -V fb.LeLe.LlLl.filt.final.vcf --snp-mask fb.LeLe.LlLl.filt.final.vcf --snp-mask-priority -O fb.LeLe.LlLl.filt.final.mask.fasta
+gatk FastaAlternateReferenceMaker -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta -V fb.LeLe.LlLl.filt.final.nonbi.vcf --snp-mask fb.LeLe.LlLl.filt.final.vcf --snp-mask-priority -O fb.LeLe.LlLl.filt.final.mask.fasta
 
 #Since FastaAlternateReferenceMaker adds a number before each sequence:
 cat fb.LeLe.LlLl.filt.final.mask.fasta | sed 's/>.*TRI/>TRI/'| sed 's/:.*//' > fb.LeLe.LlLl.filt.final.mask.fixed.fasta
