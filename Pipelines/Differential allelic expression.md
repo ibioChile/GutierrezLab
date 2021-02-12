@@ -8,7 +8,7 @@
  4. Estimate allele-specific expression among hybrids.
  
  
- ## 1. Assembly of the transcriptome of Landsberg.
+ ## 1. Assembly of the transcriptome of Landsberg (alternative, otherwise we can use a genome as a reference).
  
 1.1 Trimming adapters and regions of poor quality.
 
