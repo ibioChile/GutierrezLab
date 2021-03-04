@@ -2,13 +2,13 @@
  
  This pipeline explains how to screen genes for allele-specific expression among different conditions. The workflow starts with the generation of RNA libraries from the genotypes Arabidopsis Landsberg erecta & Llagostera. Libraries are generated from parental and hybrid genotypes. Overall, the following pipeline follows the next steps:
  
- 1. Assembly of the transcriptome of Landsberg.
+ 1. Assembly of the transcriptome of Landsberg (optional).
  2. Calling of discriminant SNPs between Landsberg erecta and Llagostera.
  3. RNA-seq mapping and differential expression among parental genotypes.
  4. Estimate allele-specific expression among hybrids.
  
  
- ## 1. Assembly of the transcriptome of Landsberg (alternative, otherwise we can use a genome as a reference).
+ ## 1. Assembly of the transcriptome of Landsberg (optional, otherwise we can use a genome as a reference).
  
 1.1 Trimming adapters and regions of poor quality.
 
