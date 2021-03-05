@@ -132,7 +132,7 @@ while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(
 2.8 Remove non-biallelic variants.
 
 ```
-vcftools --fb.LeLe.LlLl.filt.final.vcf --min-alleles 2 --max-alleles 2 --recode --out fb.LeLe.LlLl.filt.final.nonbi.vcf
+vcftools --vcf fb.LeLe.LlLl.filt.final.vcf --min-alleles 2 --max-alleles 2 --recode --out fb.LeLe.LlLl.filt.final.nonbi.vcf
 ```
 
 ## 3. RNA-seq mapping and differential expression among parental genotypes.
