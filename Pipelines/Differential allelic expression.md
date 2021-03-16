@@ -118,16 +118,51 @@ gatk CreateSequenceDictionary R=Trinity.cdhit99.fasta
 gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LeLe.all").isHomRef()' -o fb.LeLe.LlLl.filt.homref-1.vcf
 
 gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.homref-1.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LlLl.all").isHomVar()' -o fb.LeLe.LlLl.filt.homvar-2.vcf
+
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LlLl.all").isHomRef()' -o fb.LeLe.LlLl.filt.homvar-1.vcf
+
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.homvar-1.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LeLe.all").isHomVar()' -o fb.LeLe.LlLl.filt.homref-2.vcf
 ```
+
+2.7 Zip and index vcf files.
+
+```
+bgzip fb.LeLe.LlLl.filt.homref-2.vcf
+bgzip fb.LeLe.LlLl.filt.homvar-2.vcf
+ 
+tabix fb.LeLe.LlLl.filt.homref-2.vcf.gz
+tabix fb.LeLe.LlLl.filt.homvar-2.vcf.gz
+```
+
+2.8 Concat vcf files
+
+```bcftools concat fb.LeLe.LlLl.filt.homvar-2.vcf.gz fb.LeLe.LlLl.filt.homref-2.vcf.gz -o fb.LeLe.LlLl.filt.homref.homvar.vcf -a```
 
 2.7  To keep only high-confidence sites, filter out sites with AO < 20 and AO / DP < 0.99.
 
 ```
-grep "#" fb.LeLe.LlLl.filt.homvar-2.vcf > fb.LeLe.LlLl.filt.final.vcf
-grep -v "#" fb.LeLe.LlLl.filt.homvar-2.vcf > temp.vcf
+grep "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > fb.LeLe.LlLl.filt.final.vcf
+grep -v "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > temp.vcf
 
-while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $11}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final.vcf ;fi;  done < temp.vcf
+while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $11}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final-1.vcf ;fi;  done < temp.vcf
+
+while read line; do AO=$(echo $line | awk '{print $10}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $10}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final-2.vcf ;fi;  done < temp.vcf 
 ```
+
+2.7 Zip and index vcf files.
+
+```
+bgzip fb.LeLe.LlLl.filt.final-1.vcf
+bgzip fb.LeLe.LlLl.filt.final-2.vcf
+ 
+tabix fb.LeLe.LlLl.filt.final-1.vcf.gz
+tabix fb.LeLe.LlLl.filt.final-2.vcf.gz
+```
+
+2.8 Concat vcf files
+
+```bcftools concat fb.LeLe.LlLl.filt.final-1.vcf.gz fb.LeLe.LlLl.filt.final-2.vcf.gz -o fb.LeLe.LlLl.filt.final.vcf -a```
+
 
 2.8 Remove non-biallelic variants.
 
