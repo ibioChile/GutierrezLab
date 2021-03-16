@@ -143,7 +143,8 @@ bcftools concat fb.LeLe.LlLl.filt.homvar-2.vcf.gz fb.LeLe.LlLl.filt.homref-2.vcf
 2.9  To keep only high-confidence sites, filter out sites with AO < 20 and AO / DP < 0.99.
 
 ```
-grep "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > fb.LeLe.LlLl.filt.final.vcf
+grep "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > fb.LeLe.LlLl.filt.final-1.vcf
+grep "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > fb.LeLe.LlLl.filt.final-2.vcf
 grep -v "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > temp.vcf
 
 while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $11}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final-1.vcf ;fi;  done < temp.vcf
