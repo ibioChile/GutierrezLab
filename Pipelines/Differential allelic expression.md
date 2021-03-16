@@ -136,9 +136,11 @@ tabix fb.LeLe.LlLl.filt.homvar-2.vcf.gz
 
 2.8 Concat vcf files
 
-```bcftools concat fb.LeLe.LlLl.filt.homvar-2.vcf.gz fb.LeLe.LlLl.filt.homref-2.vcf.gz -o fb.LeLe.LlLl.filt.homref.homvar.vcf -a```
+```
+bcftools concat fb.LeLe.LlLl.filt.homvar-2.vcf.gz fb.LeLe.LlLl.filt.homref-2.vcf.gz -o fb.LeLe.LlLl.filt.homref.homvar.vcf -a
+```
 
-2.7  To keep only high-confidence sites, filter out sites with AO < 20 and AO / DP < 0.99.
+2.9  To keep only high-confidence sites, filter out sites with AO < 20 and AO / DP < 0.99.
 
 ```
 grep "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > fb.LeLe.LlLl.filt.final.vcf
@@ -149,7 +151,7 @@ while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(
 while read line; do AO=$(echo $line | awk '{print $10}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $10}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final-2.vcf ;fi;  done < temp.vcf 
 ```
 
-2.7 Zip and index vcf files.
+2.10 Zip and index vcf files.
 
 ```
 bgzip fb.LeLe.LlLl.filt.final-1.vcf
@@ -159,12 +161,12 @@ tabix fb.LeLe.LlLl.filt.final-1.vcf.gz
 tabix fb.LeLe.LlLl.filt.final-2.vcf.gz
 ```
 
-2.8 Concat vcf files
+2.11 Concat vcf files
 
 ```bcftools concat fb.LeLe.LlLl.filt.final-1.vcf.gz fb.LeLe.LlLl.filt.final-2.vcf.gz -o fb.LeLe.LlLl.filt.final.vcf -a```
 
 
-2.8 Remove non-biallelic variants.
+2.12 Remove non-biallelic variants.
 
 ```
 vcftools --vcf fb.LeLe.LlLl.filt.final.vcf --min-alleles 2 --max-alleles 2 --recode --out fb.LeLe.LlLl.filt.final.nonbi
