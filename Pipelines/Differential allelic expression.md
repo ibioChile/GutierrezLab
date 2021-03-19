@@ -162,15 +162,19 @@ tabix fb.LeLe.LlLl.filt.final-1.vcf.gz
 tabix fb.LeLe.LlLl.filt.final-2.vcf.gz
 ```
 
-2.11 Concat vcf files
+2.11 Concat vcf files and remove duplicates
 
-```bcftools concat fb.LeLe.LlLl.filt.final-1.vcf.gz fb.LeLe.LlLl.filt.final-2.vcf.gz -o fb.LeLe.LlLl.filt.final.vcf -a```
+```
+bcftools concat fb.LeLe.LlLl.filt.final-1.vcf.gz fb.LeLe.LlLl.filt.final-2.vcf.gz -o fb.LeLe.LlLl.filt.final.vcf -a
+bgzip fb.LeLe.LlLl.filt.final.vcf
+tabix fb.LeLe.LlLl.filt.final.vcf.gz
 
+```
 
 2.12 Remove non-biallelic variants.
 
 ```
-vcftools --vcf fb.LeLe.LlLl.filt.final.vcf --min-alleles 2 --max-alleles 2 --recode --out fb.LeLe.LlLl.filt.final.nonbi
+vcftools --vcf fb.LeLe.LlLl.filt.final.dedup.vcf --min-alleles 2 --max-alleles 2 --recode --out fb.LeLe.LlLl.filt.final.nonbi
 ```
 
 ## 3. RNA-seq mapping and differential expression among parental genotypes.
