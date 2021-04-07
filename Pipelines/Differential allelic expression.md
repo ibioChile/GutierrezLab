@@ -1,75 +1,37 @@
  # Differential allelic expression analysis
  
- This pipeline explains how to screen genes for allele-specific expression among different conditions. The workflow starts with the generation of RNA libraries from the genotypes Arabidopsis Landsberg erecta & Llagostera. Libraries are generated from parental and hybrid genotypes. Overall, the following pipeline follows the next steps:
+This pipeline explains how to screen genes for allele-specific expression among different conditions. The workflow starts with the generation of RNA libraries from the genotypes Arabidopsis Landsberg erecta & Llagostera. Libraries are generated from parental and hybrid genotypes. In this case, we will use the genome of [Arabidopsis ecotype Col-0](https://www.arabidopsis.org/download_files/Genes/TAIR10_genome_release/TAIR10_chromosome_files/TAIR10_chr_all.fas) as reference for reads mapping. Overall, the following pipeline follows the next steps:
  
- 1. Assembly of the transcriptome of Landsberg (optional).
  2. Calling of discriminant SNPs between Landsberg erecta and Llagostera.
  3. RNA-seq mapping and differential expression among parental genotypes.
  4. Estimate allele-specific expression among hybrids.
  
- 
- ## 1. Assembly of the transcriptome of Landsberg (optional, otherwise we can use a genome as a reference).
- 
+
+
+##  1. Calling of discriminant SNPs between Landsberg erecta and Llagostera.
+
 1.1 Trimming adapters and regions of poor quality.
 
 	java -jar trimmomatic-0.39.jar PE -phred33 R1.fastq.gz R2.fastq.gz R1.trim.fastq.gz R1.unpaired.fastq.gz R2.trim.fastq.gz R2.unpaired.fastq.gz LEADING:20 TRAILING:20 SLIDINGWINDOW:10:30 MINLEN:50 AVGQUAL:25
-
-1.2 Gather all treatments from the parental genotype of Landsberg and assemble in transcripts using Trinity v.2.8.5 software.
+	
+1.2 Combine all paired reads from samples of pure Landsberg and Llagostera.
 
 ```
-#Combine all paired reads
 cat LeLe*._1.fq.gz.trim.fil.pair.gz > LeLe_1.all.trim.pair.fq
 cat LeLe*._2.fq.gz.trim.fil.pair.gz > LeLe_2.all.trim.pair.fq
-
-#Combine unpaired reads
-cat LeLe*._1.fq.gz.trim.fil.unpair.gz > LeLe_1.all.trim.unpair.fq
-cat LeLe*._2.fq.gz.trim.fil.unpair.gz > LeLe_2.all.trim.unpair.fq
-
-#Combine paired and unpaired reads
-cat LeLe_1.all.trim.pair.fq LeLe_1.all.trim.unpair.fq > LeLe_1.all.trim.fq
-cat LeLe_2.all.trim.pair.fq LeLe_2.all.trim.unpair.fq > LeLe_2.all.trim.fq
-
-#Run Trinity
-mkdir trinity_out/
-Trinity --seqType fq  --left R1_all.trim.fq --right R2_all.trim.fq --CPU 20 --no_normalize_reads --output trinity_out/ --max_memory 200G
+cat LlLl*._1.fq.gz.trim.fil.pair.gz > LeLe_1.all.trim.pair.fq
+cat LlLl*._2.fq.gz.trim.fil.pair.gz > LeLe_2.all.trim.pair.fq
 ```
 
-1.3 Remove redundant transcripts using CD-HIT to cluster transcripts that share 99% similarity.
-
-```
-cd-hit-est -i Trinity.fasta -o Trinity.cdhit99.fasta -c 0.99
-```
-
-1.4 Evaluate contig statistics with TrinityStats.
-
-```
-TrinityStats.pl Trinity.cdhit99.fasta > Trinity.cdhit99.fasta.stats
-```
-
-1.4 Evaluate completeness using BUSCO.
-
-```
-python3 BUSCO_plants.py -i Trinity.cdhit99.fasta -o Trinity.cdhit99.fasta.BUSCO -l /projects2/software/opt/BUSCO-3.0/datasets/embryophyta_odb9/ -m tran -c 20 -f
-```
-
-1.5 Assess the quality of transcriptome using TransRate.
-
-```
-transrate --assembly Trinity.cdhit99.fasta --left R2.trim.fastq.gz --right R1.trim.fastq.gz --threads 32
-```
-
-##  2. Calling of discriminant SNPs between Landsberg erecta and Llagostera.
-
-
-2.1 Map Landsberg erecta and Llagostera reads (paired and unpaired) to the assembled transcriptome of Landsberg erecta with bwa.
-
+1.3 Map Landsberg erecta and Llagostera reads (paired and unpaired) with HiSat2 to the genome of Col-0 (***Tomás***).
+ 
 ```
 bwa index Trinity.cdhit99.fasta
 bwa mem -t 20 -o LeLe.all.trim.sam Trinity.cdhit99.fasta LeLe_1.all.trim.fq LeLe_2.all.trim.fq
 bwa mem -t 20 -o LlLl.all.trim.sam Trinity.cdhit99.fasta LlLl_1.all.trim.fq LlLl_2.all.trim.fq
 ```
 
-2.2 Process sam file, fix mates and remove duplicates.
+1.4 Process sam file, fix mates and remove duplicates.
 
 ```
 samtools view -S -b LeLe.all.trim.sam > LeLe.all.trim.bam
@@ -79,15 +41,17 @@ samtools sort LeLe.all.trim.fixmate.bam -o LeLe.all.trim.fixmate.sorted.bam
 samtools markdup -r LeLe.all.trim.fixmate.sorted.bam LeLe.all.trim.fixmate.sorted.dedup.bam
 samtools index LeLe.all.trim.fixmate.sorted.dedup.bam
 ```
-Repeat these steps for reads of Llagostera mapping to the transcriptome of Landsberg.
+
+Repeat these steps for reads of Llagostera mapping to Col-0.
 
 
-2.3 Call set of variants using FreeBayes.
+1.5 Call set of variants using FreeBayes.
 
 ```
-samtools faidx Trinity.cdhit99.fasta
+#Index genome of Col-0
+samtools faidx TAIR10_Chr.all.fa
 
-samtools depth LlLl.all.trim.fixmate.sorted.dedup.bam | coverage_to_regions.py Trinity.cdhit99.fasta.fai 10000 > targets.bed 
+samtools depth LlLl.all.trim.fixmate.sorted.dedup.bam | coverage_to_regions.py TAIR10_Chr.all.fa.fai 10000 > targets.bed 
 
 picard AddOrReplaceReadGroups I=LeLe.all.trim.fixmate.sorted.dedup.bam O=LeLe.all.trim.fixmate.sorted.dedup.RG.bam RGSM=LeLe.all RGPL=illumina RGLB=LeLe RGPU=LeLe RGID=1
 
@@ -97,34 +61,34 @@ samtools index LeLe.all.trim.fixmate.sorted.dedup.RG.bam
 
 samtools index LlLl.all.trim.fixmate.sorted.dedup.RG.bam
 
-freebayes-parallel targets.bed 44  -f Trinity.cdhit99.fasta --haplotype-length 0 --standard-filters --min-alternate-fraction 0.05 -p 2 --pooled-discrete --pooled-continuous LeLe.all.trim.fixmate.sorted.dedup.RG.bam LlLl.all.trim.fixmate.sorted.dedup.RG.bam > fb.LeLe.LlLl.vcf
+freebayes-parallel targets.bed 44  -f TAIR10_Chr.all.fa --haplotype-length 0 --standard-filters --min-alternate-fraction 0.05 -p 2 --pooled-discrete --pooled-continuous LeLe.all.trim.fixmate.sorted.dedup.RG.bam LlLl.all.trim.fixmate.sorted.dedup.RG.bam > fb.LeLe.LlLl.vcf
 ```
 
-2.4 Use bcftools to filter the resulting VCF file.
+1.6 Use bcftools to filter the resulting VCF file.
 
 ```
 bcftools view -i 'DP > 10 & SAF > 2 & SAR > 2 & RPR > 1 & RPL > 1'  fb.LeLe.LlLl.vcf  > fb.LeLe.LlLl.filt.vcf
 ```
 
-2.5 Create a dictionary with the transcriptome with GATK.
+1.7 Create a dictionary with the transcriptome with GATK.
 
 ```
-gatk CreateSequenceDictionary R=Trinity.cdhit99.fasta
+gatk CreateSequenceDictionary R=TAIR10_Chr.all.fa
 ```
 
-2.6 Use the SelectVariants walker in GATK to keep only monomorphic variants for an alternative allele in Llagostera and for the reference allele in Landsberg erecta.
+1.8 Use the SelectVariants walker in GATK to keep only monomorphic variants for Llagostera and for Landsberg erecta.
 
 ```
-gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LeLe.all").isHomRef()' -o fb.LeLe.LlLl.filt.homref-1.vcf
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.vcf -R TAIR10_Chr.all.fa  -select 'vc.getGenotype("LeLe.all").isHomRef()' -o fb.LeLe.LlLl.filt.homref-1.vcf
 
-gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.homref-1.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LlLl.all").isHomVar()' -o fb.LeLe.LlLl.filt.homvar-2.vcf
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.homref-1.vcf -R TAIR10_Chr.all.fa  -select 'vc.getGenotype("LlLl.all").isHomVar()' -o fb.LeLe.LlLl.filt.homvar-2.vcf
 
-gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LlLl.all").isHomRef()' -o fb.LeLe.LlLl.filt.homvar-1.vcf
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.vcf -R TAIR10_Chr.all.fa  -select 'vc.getGenotype("LlLl.all").isHomRef()' -o fb.LeLe.LlLl.filt.homvar-1.vcf
 
-gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.homvar-1.vcf -R Trinity.cdhit99.fasta  -select 'vc.getGenotype("LeLe.all").isHomVar()' -o fb.LeLe.LlLl.filt.homref-2.vcf
+gatk3 -T SelectVariants -V fb.LeLe.LlLl.filt.homvar-1.vcf -R TAIR10_Chr.all.fa  -select 'vc.getGenotype("LeLe.all").isHomVar()' -o fb.LeLe.LlLl.filt.homref-2.vcf
 ```
 
-2.7 Zip and index vcf files.
+1.9 Zip and index vcf files.
 
 ```
 bgzip fb.LeLe.LlLl.filt.homref-2.vcf
@@ -134,13 +98,13 @@ tabix fb.LeLe.LlLl.filt.homref-2.vcf.gz
 tabix fb.LeLe.LlLl.filt.homvar-2.vcf.gz
 ```
 
-2.8 Concat vcf files
+1.10 Concat vcf files
 
 ```
 bcftools concat fb.LeLe.LlLl.filt.homvar-2.vcf.gz fb.LeLe.LlLl.filt.homref-2.vcf.gz -o fb.LeLe.LlLl.filt.homref.homvar.vcf -a
 ```
 
-2.9  To keep only high-confidence sites, filter out sites with AO < 20 and AO / DP < 0.99.
+1.11  To keep only high-confidence sites, filter out sites with AO < 20 and AO / DP < 0.99.
 
 ```
 grep "#" fb.LeLe.LlLl.filt.homref.homvar.vcf > fb.LeLe.LlLl.filt.final-1.vcf
@@ -152,7 +116,7 @@ while read line; do AO=$(echo $line | awk '{print $11}' | cut -d ":" -f3); DP=$(
 while read line; do AO=$(echo $line | awk '{print $10}' | cut -d ":" -f3); DP=$(echo $line | awk '{print $10}' | cut -d ":" -f4); ratio=$(echo $AO $DP | awk '{print $1/$2}'); if [[ $AO > 19 && $ratio > 0.99 ]]; then echo "$line" >> fb.LeLe.LlLl.filt.final-2.vcf ;fi;  done < temp.vcf 
 ```
 
-2.10 Zip and index vcf files.
+1.12 Zip and index vcf files.
 
 ```
 bgzip fb.LeLe.LlLl.filt.final-1.vcf
@@ -162,35 +126,34 @@ tabix fb.LeLe.LlLl.filt.final-1.vcf.gz
 tabix fb.LeLe.LlLl.filt.final-2.vcf.gz
 ```
 
-2.11 Concat vcf files and remove duplicates
+1.13 Concat vcf files and remove duplicates
 
 ```
 bcftools concat fb.LeLe.LlLl.filt.final-1.vcf.gz fb.LeLe.LlLl.filt.final-2.vcf.gz -o fb.LeLe.LlLl.filt.final.vcf -a
 bgzip fb.LeLe.LlLl.filt.final.vcf
 tabix fb.LeLe.LlLl.filt.final.vcf.gz
-
 ```
 
-2.12 Remove non-biallelic variants.
+1.14 Remove non-biallelic variants.
 
 ```
 vcftools --vcf fb.LeLe.LlLl.filt.final.dedup.vcf --min-alleles 2 --max-alleles 2 --recode --out fb.LeLe.LlLl.filt.final.nonbi
 ```
 
-## 3. RNA-seq mapping and differential expression among parental genotypes.
+## 2. RNA-seq mapping and differential expression among parental genotypes.
 
-3.1 In order to avoid mapping biases to the reference when estimating allele-specific expression, built a custom pseudotranscriptome using the FastaAlternateReferenceMaker walker in GATK.
+2.1 In order to avoid mapping biases to the reference when estimating allele-specific expression, built a custom pseudogenome using the FastaAlternateReferenceMaker walker in GATK.
 
 ```
 gatk IndexFeatureFile -I fb.LeLe.LlLl.filt.final.nonbi.recode.vcf
 
-gatk FastaAlternateReferenceMaker -R ../../LeLe/trinity_out/Trinity.cdhit99.fasta -V fb.LeLe.LlLl.filt.final.nonbi.recode.vcf --snp-mask fb.LeLe.LlLl.filt.final.nonbi.recode.vcf --snp-mask-priority -O fb.LeLe.LlLl.filt.final.mask.fasta
+gatk FastaAlternateReferenceMaker -R TAIR10_Chr.all.fa -V fb.LeLe.LlLl.filt.final.nonbi.recode.vcf --snp-mask fb.LeLe.LlLl.filt.final.nonbi.recode.vcf --snp-mask-priority -O fb.LeLe.LlLl.filt.final.mask.fasta
 
 #Since FastaAlternateReferenceMaker adds a number before each sequence:
-cat fb.LeLe.LlLl.filt.final.mask.fasta | sed 's/>.*TRI/>TRI/'| sed 's/:.*//' > fb.LeLe.LlLl.filt.final.mask.fixed.fasta
+cat fb.LeLe.LlLl.filt.final.mask.fasta | sed 's/>.*Chr/>Chr/' | sed 's/:.*//' > fb.LeLe.LlLl.filt.final.mask.fixed.fasta
 ```
 
-3.2  Map reads from each library against the pseudotranscriptome using bowtie2.
+2.2  Map reads from each library against the pseudogenome using HiSat2 (***Tomás***).
 
 ```
 # build bowtie2 index:
@@ -200,7 +163,7 @@ bowtie2-build fb.LeLe.LlLl.filt.final.mask.fixed.fasta fb.LeLe.LlLl.filt.final.m
 bowtie2 -x fb.LeLe.LlLl.filt.final.mask.fixed.bowtie2index -1 $1_1.fq.gz.trim.fil.pair.gz -2 $1_2.fq.gz.trim.fil.pair.gz  -p 20 -S $1.sam >$1.log
 ```
 
-3.3. Mark duplicates with samtools.
+2.3. Mark duplicates with samtools.
 
 ```
 samtools view -S -b  $1.sam > $1.bam;
@@ -212,7 +175,7 @@ samtools sort -o $1.sorted.bam $1.fixmate.sorted.dedup.bam;
 samtools index $1.fixmate.sorted.dedup.bam;
 ```
 
-3.4 Quantify expression levels.
+2.4 Quantify expression levels.
 
 ```
 Prepare a pseudo Rsubread annotation file with the transcript (as chromosomes).
@@ -229,28 +192,9 @@ c0<-featureCounts(lista.bam,annot.ext=ann,allowMultiOverlap=T,isPairedEnd=T,nthr
 write.table(c0$counts,"conteos.por.transcrito.txt",sep="\t",col.names=NA,quote=F)
 ```
 
-3.5 Annotate transcripts using blast.
+## 3. Estimate allele-specific expression among hybrids.
 
-```
-# Download and extract cDNA file from arabidosis.:
-wget https://www.arabidopsis.org/download_files/Sequences/Araport11_blastsets/Araport11_genes.201606.cdna.new.fasta.gz
-gzip -d Araport11_genes.201606.cdna.new.fasta.gz
-
-# Make a blast database for nucleotide blast:
-makeblastdb -in Araport11_genes.201606.cdna.new.fasta  -input_type fasta -dbtype nucl -title Araport11_genes.201606.cdna.new.blast
-
-# Run blast:
-blastall -p blastn -i ../fb.LeLe.LlLl.filt.final.mask.fixed.rsem.transcripts.fa -d Araport11_genes.201606.cdna.new.fasta -m 8 -a 20 -o salida.m8
-
-# sort file and select the best match:
-cat salida.m8 | sort -k1,1  -k12nr,12  >salida.m8.sort
-
-cat salida.m8.sort |perl seleccionaprimeros.pl | perl -ane '@l=split(/\t/); chomp(@l);@g=split(/\./,$l[1]); print join "\t",@l,$g[0]; print "\n";'  >topscore.blast.txt
-```
-
-## 4. Estimate allele-specific expression among hybrids.
-
-4.1 Assign groups to bam files and index.
+3.1 Assign groups to bam files and index.
 
 ```
 for file in *.dedup.bam; do base=${file##*/}; picard AddOrReplaceReadGroups I=$file O=bam_dedup/${base%.*}.RG.bam RGSM=LeLl RGPL=illumina RGLB=LeLl RGPU=LeLl RGID=1 VALIDATION_STRINGENCY=LENIENT; done
@@ -258,10 +202,10 @@ for file in *.dedup.bam; do base=${file##*/}; picard AddOrReplaceReadGroups I=$f
 for file in bam_dedup/*.RG.bam; do samtools index $file; done
 ```
 
-4.2 Use the ASEReadCounter walker in GATK to retrieve Llagostera and Landsberg erecta allele counts at discriminant SNPs 
+3.2 Use the ASEReadCounter walker in GATK to retrieve Llagostera and Landsberg erecta allele counts at discriminant SNPs 
 
 ```
-for file in bam_dedup/*.RG.bam; do gatk3 -T ASEReadCounter -I $file -R Trinity.cdhit99.fasta -sites fb.LeLe.LlLl.filt.final.vcf -o $file.out -minDepth 30 -mmq 40 -mbq 20 -U ALLOW_N_CIGAR_READS; done
+for file in bam_dedup/*.RG.bam; do gatk3 -T ASEReadCounter -I $file -R TAIR10_Chr.all.fa -sites fb.LeLe.LlLl.filt.final.nonbi.recode.vcf -o $file.out -minDepth 30 -mmq 40 -mbq 20 -U ALLOW_N_CIGAR_READS; done
 ```
  
 4.3 Analize ASEReadCounter output files with this [R script](https://github.com/ibioChile/GutierrezLab/blob/master/scripts/VCF_processing2.R).
