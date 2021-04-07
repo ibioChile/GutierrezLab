@@ -208,4 +208,4 @@ for file in bam_dedup/*.RG.bam; do samtools index $file; done
 for file in bam_dedup/*.RG.bam; do gatk3 -T ASEReadCounter -I $file -R TAIR10_Chr.all.fa -sites fb.LeLe.LlLl.filt.final.nonbi.recode.vcf -o $file.out -minDepth 30 -mmq 40 -mbq 20 -U ALLOW_N_CIGAR_READS; done
 ```
  
-4.3 Analize ASEReadCounter output files with this [R script](https://github.com/ibioChile/GutierrezLab/blob/master/scripts/VCF_processing2.R).
+3.3 Analize ASEReadCounter output files with this [R script](https://github.com/ibioChile/GutierrezLab/blob/master/scripts/VCF_processing2.R).
